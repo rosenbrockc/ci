@@ -1,0 +1,22 @@
+New Pull Request at __reponame__
+----------------------------------------------------------------------
+
+A repository monitored by the Continuous Integration server has just
+detected a new pull request for:
+
+__reponame__(__repourl__) #__pullnum__(__pullurl__)
+__repodesc__
+
+The git initialization has succeeded in the local directory:
+"__repodir__",
+and the following unit tests have started running:
+
+__test_text__
+
+If you have any questions, please contact the owner of the repository:
+
+__username__(__userurl__)
+__useremail__
+
+Kind Regards,
+CI Bot

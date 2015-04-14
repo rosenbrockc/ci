@@ -1,0 +1,24 @@
+Unit Tests Timed Out for Pull Request at __reponame__
+----------------------------------------------------------------------
+
+A repository monitored by the Continuous Integration server has just
+timed out while executing its unit tests.
+
+__reponame__(__repourl__) #__pullnum__(__pullurl__)
+__repodesc__
+
+Unit Test Results
+-----------------------------
+
+__test_text__
+
+Unit tests ran in "__repodir__".
+Online details available at __wikiurl__.
+
+If you have any questions, please contact the owner of the repository:
+
+__username__(__userurl__)
+__useremail__
+
+Kind Regards,
+CI Bot

@@ -1,0 +1,3 @@
+This child file is in a folder that was marked as static.
+It together with its siblings and any deeper folders should
+be copied as static folder.

@@ -1,0 +1,38 @@
+Unit Tests Timed Out for Pull Request at ciuser/arbitrary
+----------------------------------------------------------------------
+
+A repository monitored by the Continuous Integration server has just
+timed out while executing its unit tests.
+
+ciuser/arbitrary(http://github.com/ciuser/arbitrary) #__pullnum__(__pullurl__)
+Unit testing description of arbitrary.
+
+Unit Test Results
+-----------------------------
+
+Command: first tests/a.py
+ - Start: 07/14/2005 12:30
+ - End:   07/14/2005 12:31
+ - Code:  0
+
+Command: @CUSTBIN tests/scripts.py
+ - Start: 07/14/2005 12:30
+ - End:   07/14/2005 12:31
+ - Code:  1
+
+Command: cd @CUSTPATH; path tests/builders.py
+ - Start: 07/14/2005 12:30
+ - End:   07/14/2005 12:31
+ - Code:  2
+__
+
+Unit tests ran in "/Users/trunks/codes/ci/tests/repo".
+Online details available at __wikiurl__.
+
+If you have any questions, please contact the owner of the repository:
+
+ciuser(http://usercontent.github.com/ciuser)
+ciuser@gmail.com
+
+Kind Regards,
+CI Bot

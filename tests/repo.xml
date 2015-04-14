@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<cirepo name="arbitrary" user="agituser" apikey="[key]"
+	organization="custom-org" staging="~/codes/ci/tests/repo">
+  <cron frequency="5" emails="a@gmail.com, b@gmail.com"
+	notify="start, error, success" />
+  <testing timeout="120">
+    <command>first tests/a.py</command>
+    <command>@CUSTBIN tests/scripts.py</command>
+    <command>cd @CUSTPATH; path tests/builders.py</command>
+  </testing>
+  <wiki user="wikibot" password="botpassword"
+	basepage="Base_Page" />
+  <static>
+    <file path="~/codes/ci/tests/static/file.txt"
+	  target="./file.txt" />
+    <folder path="~/codes/ci/tests/static/folder" target="./folder" />
+  </static>
+</cirepo>

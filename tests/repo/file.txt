@@ -1,0 +1,2 @@
+This is an example of a static file that should be copied
+to the repo folder before doing a remote pull.

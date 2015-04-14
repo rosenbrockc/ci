@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<cirepo name="diaconis" user="rosenbrockc" apikey="[key]"
+	organization="byu-msg" staging="~/ci/diaconis">
+  <cron frequency="5" emails="rosenbrockc@gmail.com"
+	notify="start, timeout, error, success" />
+  <testing timeout="120">
+    <command>runtests.py fortran/ -stagedir unittests/ -rerun
+    "*"</command>
+    <command>@CUSTBIN tests/scripts.py</command>
+    <command>cd @CUSTPATH; path tests/builders.py</command>
+  </testing>
+  <wiki user="wikibot" password="botpassword"
+	basepage="Harmonic Analysis" />
+  <static>
+    <file path="/some/local/path/file.ext"
+	  target="./static/file.ext" />
+    <folder path="/some/local/folder/" target="./lib/static" />
+  </static>
+</cirepo>

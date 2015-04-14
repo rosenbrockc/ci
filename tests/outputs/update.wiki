@@ -1,0 +1,25 @@
+This page was automatically created by the CI bot for holding details of the automated unit testing for continuous integration.
+
+==Github Pull Request Info==
+
+http://some.url/avatar Fake pull request body text. (10/14/2005 05:23 [http://ci.github.com github])
+
+==Commands Run for Unit Testing==
+
+# first tests/a.py
+* Start:  None
+* End:    None
+* Code:   None
+* Stdout: [[File:arbitrary_Pull_Request_11_0.txt]]
+
+# @CUSTBIN tests/scripts.py
+* Start:  None
+* End:    None
+* Code:   None
+* Stdout: [[File:arbitrary_Pull_Request_11_1.txt]]
+
+# cd @CUSTPATH; path tests/builders.py
+* Start:  None
+* End:    None
+* Code:   None
+* Stdout: [[File:arbitrary_Pull_Request_11_2.txt]]

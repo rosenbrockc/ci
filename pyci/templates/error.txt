@@ -1,0 +1,23 @@
+Execution Error for Pull Request at __reponame__
+----------------------------------------------------------------------
+
+A repository monitored by the Continuous Integration server has just
+died because of an *unhandled exception* in the CI server code.
+
+__reponame__(__repourl__) #__pullnum__(__pullurl__)
+__repodesc__
+
+Error Message and Stack Trace
+-----------------------------
+
+__message__
+
+Unit tests are configured to run in "__repodir__".
+
+If you have any questions, please contact the owner of the repository:
+
+__username__(__userurl__)
+__useremail__
+
+Kind Regards,
+CI Bot

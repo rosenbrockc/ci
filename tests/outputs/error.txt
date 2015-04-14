@@ -1,0 +1,23 @@
+Execution Error for Pull Request at ciuser/arbitrary
+----------------------------------------------------------------------
+
+A repository monitored by the Continuous Integration server has just
+died because of an *unhandled exception* in the CI server code.
+
+ciuser/arbitrary(http://github.com/ciuser/arbitrary) #__pullnum__(__pullurl__)
+Unit testing description of arbitrary.
+
+Error Message and Stack Trace
+-----------------------------
+
+__message__
+
+Unit tests are configured to run in "/Users/trunks/codes/ci/tests/repo".
+
+If you have any questions, please contact the owner of the repository:
+
+ciuser(http://usercontent.github.com/ciuser)
+ciuser@gmail.com
+
+Kind Regards,
+CI Bot

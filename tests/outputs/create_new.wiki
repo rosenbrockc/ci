@@ -1,0 +1,5 @@
+This page was automatically created by the CI bot for holding details of the automated unit testing for continuous integration.
+
+# first tests/a.py
+# @CUSTBIN tests/scripts.py
+# cd @CUSTPATH; path tests/builders.py

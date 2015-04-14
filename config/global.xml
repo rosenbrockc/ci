@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<variables>
+  <var name="GATEWAY" value="gateway.byu.edu" />
+  <var name="FROM" value="no-reply@ci.msg.byu.edu" />
+  <var name="CUSTBIN" value="/usr/local/bin/mytester" />
+  <var name="CUSTPATH" value="/Users/dev/data/" />
+  <var name="WIKI" value="hagrid.byu.edu/wiki/core" />
+  <var name="DATAFILE" value="~/.ci.data.json" />
+  <var name="ARCHFILE" value="~/.ci.archive.json" />
+  <var name="VENV" value="ci" />
+</variables>

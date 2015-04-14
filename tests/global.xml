@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+<variables>
+  <var name="GATEWAY" value="gateway.domain.com" />
+  <var name="FROM" value="no-reply@ci.domain.com" />
+  <var name="CUSTBIN" value="/usr/local/bin/mytester" />
+  <var name="CUSTPATH" value="/Users/dev/data/" />
+  <var name="WIKI" value="wiki.domain.com/wiki/core" />
+  <var name="DATAFILE" value="~/codes/ci/tests/data.json" />
+  <var name="ARCHFILE" value="~/codes/ci/tests/archive.json" />
+  <var name="VENV" value="ci" />
+</variables>
