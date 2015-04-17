@@ -177,7 +177,7 @@ class Server(object):
             if self.runnable is not None and lname not in self.runnable:
                 #We just ignore this repository completely and don't even bother
                 #performing a live check on github.
-                continue    
+                continue
             
             pulls = testpulls if testpulls is not None else repo.repo.get_pulls("open")
             result[lname] = []

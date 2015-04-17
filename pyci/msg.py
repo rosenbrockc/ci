@@ -2,6 +2,10 @@
 for coloring for warnings, errors, etc."""
 from termcolor import cprint
 
+verbose = False
+"""Specifies whether the messager is running in verbose mode across all modules.
+"""
+
 def example(script, explain, contents, requirements, output, outputfmt, details):
     """Prints the example help for the script."""
     blank()
@@ -19,9 +23,10 @@ def example(script, explain, contents, requirements, output, outputfmt, details)
         std(details)
         blank()
 
-    cprint("OUTPUT FORMAT", "blue")
-    std(outputfmt)
-    blank()
+    if outputfmt != "":
+        cprint("OUTPUT FORMAT", "blue")
+        std(outputfmt)
+        blank()
 
     cprint("EXAMPLES", "blue")
     for i in range(len(contents)):
@@ -52,11 +57,22 @@ def okay(msg):
     """Prints the specified message as textual progress update."""
     cprint(msg, "green")
 
-def gen(msg):
+def std(msg):
     """Prints the message as generic output to terminal."""
-    cprint(msg, "blue")
+    cprint(msg, "white")
 
 def blank(n=1):
     """Prints a blank line to the terminal."""
     for i in range(n):
         print("")
+
+def set_verbose(verbosity):
+    """Sets the global verbosity for all modules."""
+    global verbose
+    verbose = verbosity
+        
+def vms(message, level=1):
+    """Writes the specified message *only* if verbose output is enabled."""
+    if verbose is not None and verbose != False:
+        if isinstance(verbose, bool) or (isinstance(verbose, int) and level <= verbose):
+            std(message)

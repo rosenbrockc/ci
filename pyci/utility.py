@@ -30,6 +30,20 @@ def get_repo_relpath(repo, relpath):
         chdir(cd)
         return result
 
+import dateutil.parser    
+def load_with_datetime(pairs):
+    """Deserialize JSON into python datetime objects."""
+    d = {}
+    for k, v in pairs:
+        if isinstance(v, basestring):
+            try:
+                d[k] = dateutil.parser.parse(v)
+            except ValueError:
+                d[k] = v
+        else:
+            d[k] = v             
+    return d
+
 def get_json(jsonpath, default):
     """Returns the JSON serialized object at the specified path, or the default
     if it doesn't exist or can't be deserialized.
@@ -41,7 +55,7 @@ def get_json(jsonpath, default):
     if path.isfile(jsonpath):
         try:
             with open(jsonpath) as f:
-                result = json.load(f)
+                result = json.load(f, object_pairs_hook=load_with_datetime)
         except(IOError):
             err("Unable to deserialize JSON at {}".format(jsonpath))
             pass
@@ -54,7 +68,7 @@ def json_serial(obj):
     if isinstance(obj, datetime):
         serial = obj.isoformat()
         return serial
-    
+
 def run_exec(repodir, command, output, index):
     """Runs the specified command in the repo directory.
 

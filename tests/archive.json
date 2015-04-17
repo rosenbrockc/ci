@@ -1,1 +1,1 @@
-{"arbitrary": {"1": {"success": false, "completed": false, "number": 1, "start": "2015-04-23T13:05:00", "finished": null, "stage": "~/codes/ci/tests/repo"}, "2": {"success": false, "completed": true, "number": 2, "start": "2015-04-23T13:05:00", "finished": "2015-04-23T13:09:00", "stage": "~/codes/ci/tests/repo"}, "3": {"success": true, "completed": true, "number": 3, "start": "2015-04-23T13:05:00", "finished": "2015-04-23T15:15:00", "stage": "~/codes/ci/tests/repo"}}}
+{"arbitrary": {}}

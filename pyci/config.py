@@ -3,6 +3,7 @@ the JSON library file. Provides a class for interacting with a specific repo's
 XML configuration.
 """
 from utility import get_attrib, get_repo_relpath
+from msg import vms
 
 class RepositorySettings(object):
     """Represents a single github repository that should be unit tested when
@@ -87,13 +88,15 @@ class RepositorySettings(object):
         API interface in pygithub.
         """
         from pygithub import Github
+        vms("Querying github with user '{}'.".format(self.user))
         g = Github(self.user, self.apikey)
         self._user = g.get_user()
         #The github user authenticating always has to be specified; however the user
         #may not be able to see the repo, even if it has access to it. We may need
         #to check the organization repos.
         if self.organization is not None:
-            self._org = g.get_organization(self.organization)       
+            self._org = g.get_organization(self.organization)
+            vms("Found github organization '{}'.".format(self._org.name), 2)
 
             #Next we need to find this repository in the lists available to both
             #the user *and* the organization. If they specified an organization, then we
@@ -101,11 +104,13 @@ class RepositorySettings(object):
             for repo in self._org.get_repos():
                 if repo.full_name.lower() == self.name.lower():
                     self._repo = repo
+                    vms("Found organization repository '{}'.".format(self._repo.full_name), 2)
                     break
         else:
             for repo in self._user.get_repos():
                 if repo.full_name.lower() == self.name.lower():
                     self._repo = repo
+                    vms("Found user repository '{}'.".format(self._repo.full_name), 2)
                     break        
                 
     def _parse_repo(self, xml):
@@ -132,6 +137,7 @@ class RepositorySettings(object):
         #Make sure the file exists and then import it as XML and read the values out.
         if path.isfile(self.filepath):
             tree = ET.parse(self.filepath)
+            vms("Parsing XML tree from {}.".format(self.filepath), 2)
             root = tree.getroot()
             if root.tag != "cirepo":
                 raise ValueError("The root tag in a continuous integration settings XML "
@@ -189,6 +195,7 @@ class CronSettings(object):
     def _parse_xml(self, xml):
         """Extracts the attributes from the XMLElement instance."""
         from re import split
+        vms("Parsing <cron> XML child tag.", 2)
         self.frequency = get_attrib(xml, "frequency", default=5, cast=int)
         self.emails = split(",\s*", get_attrib(xml, "emails", default=""))
         self.notify = split(",\s*", get_attrib(xml, "notify", default=""))
@@ -222,6 +229,7 @@ class StaticSettings(object):
         """Extracts objects representing and interacting with the settings in the
         xml tag.
         """
+        vms("Parsing <static> XML child tag.", 2)
         for child in xml:
             if "path" in child.attrib and "target" in child.attrib:
                 if child.tag == "file":
@@ -241,14 +249,17 @@ class StaticSettings(object):
         #Instead of using the built-in shell copy, we make shell calls to rsync.
         #This allows us to copy only changes across between runs of pull-requests.
         from os import system, path
+        vms("Running static file copy locally.", 2)
         for file in self.files:
             fullpath = path.expanduser(file["source"])
             if path.isfile(fullpath):
+                vms("Running 'rsync' for {}.".format(fullpath), 3)
                 system("rsync -t -u {} {}".format(fullpath, get_repo_relpath(repodir, file["target"])))
 
         for folder in self.folders:
             fullpath = path.expanduser(folder["source"])
             if path.isdir(fullpath):
+                vms("Running 'rsync' for {}.".format(fullpath), 3)
                 system("rsync -t -u -r {} {}".format(path.join(fullpath, ""),
                                                      path.join(get_repo_relpath(repodir, folder["target"]), "")))
                     
@@ -281,6 +292,7 @@ class TestingSettings(object):
         """Extracts objects representing and interacting with the settings in the
         xml tag.
         """
+        vms("Parsing <testing> XML child tag.", 2)
         self.timeout = get_attrib(xml, "timeout", cast=int)
         for child in xml:
             if child.tag == "command":
@@ -318,7 +330,9 @@ class TestingSettings(object):
                     l += self.format_time(test["end"], td, "%m/%d/%Y %H:%M", "None")
                     l += td(str(test["code"]))
 
-        return str(result)
+        sresult = str(result)
+        vms("HTML test table generated: {}.".format(sresult), 3)
+        return sresult
                     
     def text(self, full=True):
         """Returns a text representation of the test results."""
@@ -334,7 +348,9 @@ class TestingSettings(object):
                     self.format_time(test["end"], str, "%m/%d/%Y %H:%M", "None")))
                 result.append(" - Code:  {}\n".format(test["code"]))
 
-        return '\n'.join(result)
+        sresult = '\n'.join(result)
+        vms("Text test table generated: {}.".format(sresult), 3)        
+        return sresult
 
     def wiki(self, full=True):
         """Returns the markup for writing the testing details to a media wiki.
@@ -350,7 +366,9 @@ class TestingSettings(object):
                 result.append("* Code:   {}".format(test["code"]))
                 result.append("* Stdout: [[File:{}]]\n".format(test["remote_file"]))
 
-        return '\n'.join(result)
+        sresult = '\n'.join(result)
+        vms("Wiki test table generated: {}.".format(sresult), 3)
+        return sresult
     
 class GlobalSettings(object):
     def __init__(self, noload=False):
@@ -453,6 +471,7 @@ class GlobalSettings(object):
         uxpath = path.expanduser(filepath)
         if path.isfile(uxpath):
             tree = ET.parse(uxpath)
+            vms("Parsing global settings from {}.".format(uxpath))
             root = tree.getroot()
 
             for child in root:

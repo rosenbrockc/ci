@@ -17,7 +17,7 @@ except ImportError:
     read_md = lambda f: open(f, 'r').read()
 
 setup(name='py-ci',
-      version='0.0.1',
+      version='0.0.2',
       description='Continuous integration server for Github and MediaWiki.',
       long_description=read_md('README.md'),
       author='Conrad W Rosenbrock',

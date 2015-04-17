@@ -1,7 +1,19 @@
 #!/usr/bin/python
 """High-level interface to the classes and methods in the package.
 """
-from pyci.msg import err, warn, okay, info
+from pyci.msg import err, warn, okay, info, vms, set_verbose
+
+settings = None
+"""The GlobalSettings instance with interpreted contents of 'global.xml'.
+"""
+db = {}
+"""The scripts database which includes cron status, enabled status and a
+list of the installed repositories.
+"""
+datapath = None
+"""The full path to the data file to which 'db' is serialized."""
+args = None
+"""The dictionary of arguments passed to the script."""
 
 def examples():
     """Prints examples of using the script to the console using colored output.
@@ -24,7 +36,7 @@ def examples():
                  "sudo ci.py -setup", 
                  ("Before this setup can proceed, you need to make sure the global configuration "
                   "XML file has been created and the environment variable to its path has been set:\n"
-                  "\texport PYCI_XML='~/path/to/global.xml'\n. See also: -rollback")),
+                  "\texport PYCI_XML='~/path/to/global.xml'.\nSee also: -rollback")),
                 (("Remove the cron tab from the server, delete the list of installed repositories "
                   "and undo anything else that the script did when -setup was used."),
                  "sudo ci.py -rollback",
@@ -41,7 +53,7 @@ def examples():
                  "ci.py -cron", "")]
     required = ("REQUIRED:\n\t-'repo.xml' file for *each* repository that gets installed on the server.\n"
                 "\t-'global.xml' file with configuration settings for *all* repositories.\n"
-                "\t-git user and API key with push access for *each* repository installed.")
+                "\t- git user and API key with push access for *each* repository installed.")
     output = ("RETURNS: prints status information to stdout.")
     details = ("This script installs a continous integration server on the local machine by "
                "configuring a cron to call this script every couple of minutes. The script interacts "
@@ -60,10 +72,10 @@ def _parser_options():
     parser = argparse.ArgumentParser(description="UNCLE Cron Server")
     parser.add_argument("-examples", action="store_true",
                         help="Display examples of how to use this script.")
-    parser.add_argument("-setup",
+    parser.add_argument("-setup", action="store_true",
                         help=("Setup the cron tab and script database for this server so "
                               "that it is ready to have repositories installed."))
-    parser.add_argument("-rollback",
+    parser.add_argument("-rollback", action="store_true",
                         help=("Remove this script's cron tab and reverse other things done "
                               "by this script. This does not delete this script."))
     parser.add_argument("-enable", action="store_true",
@@ -82,10 +94,16 @@ def _parser_options():
     parser.add_argument("-uninstall", nargs="+",
                         help=("Uninstall the specified XML file(s) as repositories from "
                               "the CI server."))
-    parser.add_argument("-verbose", action="store_true",
+    parser.add_argument("--verbose", nargs="?", type=int, const=1,
                         help="Runs the CI server in verbose mode.")
     parser.add_argument("-cronfreq", type=int, default=1,
                         help="Specify the frequency at which the cron runs.")
+    parser.add_argument("-nolive", action="store_true",
+                        help=("For unit testing, when specified no live requests are made to "
+                              "servers and all the class actions are performed in test mode. "
+                              "This also prevents the cron tab from being installed."))
+
+    global args
     args = vars(parser.parse_known_args()[0])
 
     if args["examples"]:
@@ -94,32 +112,23 @@ def _parser_options():
 
     return args
 
-settings = None
-"""The GlobalSettings instance with interpreted contents of 'global.xml'.
-"""
-db = {}
-"""The scripts database which includes cron status, enabled status and a
-list of the installed repositories.
-"""
-datapath = None
-"""The full path to the data file to which 'db' is serialized."""
-args = None
-"""The dictionary of arguments passed to the script."""
-
 def _load_db():
     """Deserializes the script database from JSON."""
     from os import path
     from pyci.utility import get_json
     global datapath, db
     datapath = path.abspath(path.expanduser(settings.datafile))
+    vms("Deserializing DB from {}".format(datapath))
     db = get_json(datapath, {"installed": [], "enabled": True, "cron": False})
 
 def _save_db():
     """Serializes the contents of the script db to JSON."""
     from pyci.utility import json_serial
+    import json
+    vms("Serializing DB to JSON in {}".format(datapath))
     with open(datapath, 'w') as f:
         json.dump(db, f, default=json_serial)
-    
+        
 def _get_real_user():
     """Returns the name of the actual user account, even if running in sudo."""
     import os
@@ -131,15 +140,21 @@ def _check_virtualenv():
     """
     from os import waitpid
     from subprocess import Popen, PIPE
-    penvs = Popen("virtualenvwrapper_show_workon_options",
+    penvs = Popen("source /usr/local/bin/virtualenvwrapper.sh; workon",
                  shell=True, executable="/bin/bash", stdout=PIPE, stderr=PIPE)
-    waitpid(premote.pid, 0)
+    waitpid(penvs.pid, 0)
     envs = penvs.stdout.readlines()
     enverr = penvs.stderr.readlines()
-    result = settings.venv in envs and len(enverr) == 0
+    result = (settings.venv + '\n') in envs and len(enverr) == 0
 
+    vms("Find virtualenv: {}".format(' '.join(envs).replace('\n', '')))
+    vms("Find virtualenv | stderr: {}".format(' '.join(enverr)))
+    
     if not result:
-        err("The virtualenv '{}' does not exist; can't use CI server.")
+        info(envs)
+        err("The virtualenv '{}' does not exist; can't use CI server.".format(settings.venv))
+        if len(enverr) > 0:
+            map(err, enverr)
     return result
 
 def _check_global_settings():
@@ -163,7 +178,7 @@ def _check_global_settings():
         if not path.isfile(fullpath):
             err("The file {} for global configuration does not exist.".format(fullpath))
         else:
-            from config import GlobalSettings
+            from pyci.config import GlobalSettings
             settings = GlobalSettings()
             result = True
 
@@ -174,13 +189,17 @@ def _setup_crontab():
     from crontab import CronTab
     command = "workon {}; {}".format(settings.venv, os.path.realpath(__file__) + " -cron")
     user = _get_real_user()
+    if args["nolive"]:
+        vms("Skipping cron tab configuration because 'nolive' enabled.")
+        return
     cron = CronTab(user=user)
     
     #We need to see if the cron has already been created for this command.
     existing = False
-    possible = cron.find_command(command):
+    possible = cron.find_command(command)
     if len(possible) > 0:
         if args["rollback"]:
+            vms("Removing {} from cron tab.".format(command))
             cron.remove_all(command)
             db["cron"] = False
             _save_db()
@@ -191,8 +210,10 @@ def _setup_crontab():
         job = cron.new(command=command)
         #Run the cron every minute of every hour every day.
         if args["cronfreq"] == 1:
+            vms("New cron tab configured *minutely* for {}".format(command))
             job.setall("* * * * *")
         else:
+            vms("New cron tab configured every {} minutes for {}.".format(args["cronfreq"], command))
             job.setall("*/{} * * * *".format(args["cronfreq"]))
         cron.write()
         db["cron"] = True
@@ -212,7 +233,7 @@ def _setup_server():
         if "cron" in db and not db["cron"]:
             _setup_crontab()
 
-    if (args["rollback"] "cron" in db and db["cron"]):
+    if (args["rollback"] and "cron" in db and db["cron"]):
         _setup_crontab()
 
 def _server_rollback():
@@ -223,22 +244,29 @@ def _server_rollback():
     #gets remove by the _setup_server() script if -rollback is specified.
     from os import path, remove
     archpath = path.abspath(path.expanduser(settings.archfile))
-    if path.isfile(archpath):
+    if path.isfile(archpath) and not args["nolive"]:
+        vms("Removing archive JSON file at {}.".format(archpath))
         remove(archpath)
     datapath = path.abspath(path.expanduser(settings.datafile))
-    if path.isfile(datafile):
-        remove(datafile)
+    if path.isfile(datapath) and not args["nolive"]:
+        vms("Removing script database JSON file at {}".format(datapath))
+        remove(datapath)
 
 def _server_enable():
     """Checks whether the server should be enabled/disabled and makes the
     change accordingly.
     """
-    if args["disable"] and "enabled" in db and db["enabled"]:
+    prev = None if "enabled" not in db else db["enabled"]
+    if args["disable"]:
         db["enabled"] = False
-        _save_db()
+        okay("Disabled the CI server. No pull requests will be processed.")
 
-    if args["enable"] and "enabled" in db and not db["enabled"]:
+    if args["enable"]:
         db["enabled"] = True
+        okay("Enabled the CI server. Pull request monitoring online.")
+
+    #Only perform the save if something actually changed.
+    if prev != db["enabled"]:
         _save_db()        
 
 def _find_next(server):
@@ -254,16 +282,20 @@ def _find_next(server):
     
     if "status" in db:
         for reponame, status in db["status"].items():
-            start = status["started"]
-            end = status["finished"]
+            vms("Checking cron status for {}: {}".format(reponame, status))
+            start = None if "started" not in status else status["started"]
+            end = None if "end" not in status else status["end"]
             running = start is not None and end is not None and start > end
             add = False
             
             if not running and end is not None:
                 #Check the last time it was run and see if enough time has
                 #elapsed.
-                elapsed = (datetime.now() - end).minutes
+                elapsed = (datetime.now() - end).seconds/60
                 add = elapsed > server.cron.settings[reponame].frequency
+                if not add:
+                    vms("'{}' skipped because the interval hasn't ".format(reponame) +
+                        "elapsed ({} vs. {})".format(elapsed, server.cron.settings[reponame].frequency))
             elif end is None:
                 add = True
 
@@ -277,13 +309,14 @@ def _find_next(server):
 
     if result is None:
         #We still need to check the newly installed repos.            
-        for reponame, repo in server.repositories:
+        for reponame, repo in server.repositories.items():
             if reponame not in visited:
                 #These are newly installed repos that have never run before.
+                vms("Added '{}' as new repo for cron execution.".format(reponame))
                 result = reponame
                 break
 
-    return reponame
+    return result
 
 def _do_cron():
     """Handles the cron request to github to check for new pull requests. If
@@ -311,18 +344,22 @@ def _do_cron():
 
     #We use the repo full names as keys in the db's status dictionary.
     from pyci.server import Server
+    from datetime import datetime
     attempted = []
-    server = Server()
+    server = Server(testmode=args["nolive"])
     nextrepo = _find_next(server)
     dbs = db["status"]
     
     while nextrepo is not None:
+        vms("Working on '{}' in cron.".format(nextrepo))
         if nextrepo in attempted:
             #This makes sure we don't end up in an infinite loop.
+            vms("'{}' has already been handled! Exiting infinite loop.".format(nextrepo))
             break
         
-        if nextrepo not dbs:
-            dbs[nextrepo] = {"start": None, "finished": None}
+        if nextrepo not in dbs:
+            vms("Created blank status dictionary for '{}' in db.".format(nextrepo))
+            dbs[nextrepo] = {"start": None, "end": None}
         dbs[nextrepo]["start"] = datetime.now()
         _save_db()
 
@@ -330,7 +367,9 @@ def _do_cron():
         #actually run them.
         attempted.append(nextrepo)
         server.runnable = [nextrepo]
-        server.process_pulls()
+        if not args["nolive"]:
+            vms("Starting pull request processing for '{}'.".format(nextrepo))
+            server.process_pulls()
     
         dbs[nextrepo]["end"] = datetime.now()
         _save_db()
@@ -354,16 +393,16 @@ def _list_repos():
     #they also exist in the db's status; if they do, include the start/end
     #times we have saved.
     from pyci.server import Server
-    server = Server()
-    output = ["Repository | Started | Finished | XML File Path",
-              "-----------------------------------------------"]
+    server = Server(testmode=args["nolive"])
+    output = ["Repository           |      Started     |      Finished    | XML File Path",
+              "--------------------------------------------------------------------------"]
 
     dbs = {} if "status" not in db else db["status"]
     fullfmt = "{0:<20} | {1:^16} | {2:^16} | {3}"
-    for reponame, repo in server.repositories:
+    for reponame, repo in server.repositories.items():
         if reponame in dbs:
             start = _fmt_time(dbs[reponame]["start"])
-            end = _fmt_time(dbs[reponame]["finished"])
+            end = _fmt_time(dbs[reponame]["end"])
             output.append(fullfmt.format(reponame, start, end, repo.filepath))
 
     info('\n'.join(output))
@@ -373,18 +412,21 @@ def _handle_install():
     """
     from pyci.server import Server
     if args["install"]:
-        server = Server()
+        server = Server(testmode=args["nolive"])
         for xpath in args["install"]:
             server.install(xpath)
             okay("Installed {} into the CI server.".format(xpath))
     if args["uninstall"]:
-        server = Server()
+        server = Server(testmode=args["nolive"])
         for xpath in args["uninstall"]:
             server.uninstall(xpath)
             okay("Uninstalled {} from the CI server.".format(xpath))
     
 def run():
     """Main script entry to handle the arguments given to the script."""
+    _parser_options()
+    set_verbose(args["verbose"])
+    
     if _check_global_settings():
         _load_db()
     else:
@@ -392,14 +434,13 @@ def run():
 
     #Check the server configuration against the script arguments passed in.
     _setup_server()
-    _server_enable()
 
     if args["rollback"]:
         _server_rollback()
         okay("The server rollback appears to have been successful.")
         exit(0)
 
-    
+    _server_enable()    
     _list_repos()
     _handle_install()
     
