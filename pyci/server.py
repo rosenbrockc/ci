@@ -88,7 +88,7 @@ class Server(object):
           from running the tests in real time.
         """
         from datetime import datetime
-        pulls = self.find_pulls(testpulls.values())
+        pulls = self.find_pulls(None if testpulls is None else testpulls.values())
         for reponame in pulls:
             for pull in pulls[reponame]:
                 try:

@@ -2,6 +2,11 @@
 
 For all revisions after the initial repository setup.
 
+## Revision 0.0.4
+
+- Debugging the actual implementation on the server to work well with crontab etc.
+- Added `pygithub` dependency to `setup.py`.
+
 ## Revision 0.0.3
 
 - Added support for `.cron_profile` environment variables; needed for PyCI to load correctly and probably for user's unit tests to run correctly. If the file doesn't exist, it is automatically created with the bare-minimum defaults.

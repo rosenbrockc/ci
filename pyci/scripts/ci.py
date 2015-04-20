@@ -189,7 +189,7 @@ def _setup_crontab():
     from crontab import CronTab
     #Since CI works out of a virtualenv anyway, the `ci.py` script will be
     #installed in the bin already, so we can call it explicitly.
-    command = "source ~/.cron_profile; workon {}; ci.py -cron".format(settings.venv)
+    command = '/bin/bash -c "source ~/.cron_profile; workon {}; ci.py -cron"'.format(settings.venv)
     user = _get_real_user()
     if args["nolive"]:
         vms("Skipping cron tab configuration because 'nolive' enabled.")
@@ -198,18 +198,19 @@ def _setup_crontab():
     
     #We need to see if the cron has already been created for this command.
     existing = False
-    possible = cron.find_command(command)
-    if len(possible) > 0:
+    possible = cron.find_comment("pyci_cron")
+    if len(list(possible)) > 0:
         if args["rollback"]:
             vms("Removing {} from cron tab.".format(command))
             cron.remove_all(command)
+            cron.write()
             db["cron"] = False
             _save_db()
         else:
             existing = True
     
     if not existing and not args["rollback"]:
-        job = cron.new(command=command)
+        job = cron.new(command=command, comment="pyci_cron")
         #Run the cron every minute of every hour every day.
         if args["cronfreq"] == 1:
             vms("New cron tab configured *minutely* for {}".format(command))
@@ -251,7 +252,7 @@ def _setup_server():
         if "cron" in db and not db["cron"]:
             _setup_crontab()
 
-    if (args["rollback"] and "cron" in db and db["cron"]):
+    if args["rollback"]:
         _setup_crontab()
 
 def _server_rollback():
@@ -421,7 +422,10 @@ def _list_repos():
         if reponame in dbs:
             start = _fmt_time(dbs[reponame]["start"])
             end = _fmt_time(dbs[reponame]["end"])
-            output.append(fullfmt.format(reponame, start, end, repo.filepath))
+        else:
+            start = "Never"
+            end = "Never"
+        output.append(fullfmt.format(reponame, start, end, repo.filepath))
 
     info('\n'.join(output))
     

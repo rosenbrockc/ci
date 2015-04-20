@@ -17,7 +17,7 @@ except ImportError:
     read_md = lambda f: open(f, 'r').read()
 
 setup(name='pyci',
-      version='0.0.3',
+      version='0.0.4',
       description='Continuous integration server for Github and MediaWiki.',
       long_description=read_md('README.md'),
       author='Conrad W Rosenbrock',
@@ -29,7 +29,8 @@ setup(name='pyci',
           "termcolor",
           "dominate",
           "mwclient",
-          "python-crontab"
+          "python-crontab",
+          "pygithub"
       ],
       packages=['pyci'],
       scripts=['pyci/scripts/ci.py'],
