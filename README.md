@@ -40,3 +40,7 @@ ci.py -install ~/repos/myrepo/ci.xml
 Your repository will now be monitored for new pull requests forever untill you either `-uninstall` the `repo.xml` file _or_ you `-disable` the CI server to temporarily suspend all requests. To understand the behavior of the CI server, read through the [repository level settings](https://github.com/rosenbrockc/ci/wiki/Repository-Level-Settings) page.
 
 **IMPORTANT:** if your unit tests require environment variables to be set, they need to be added to a file called `~/.cron_profile` that will be loaded by the CI server whenever the cron is run. See [cron environment variables](https://github.com/rosenbrockc/ci/wiki/Environment-Variables-for-Unit-Tests) for more details.
+
+## Troubleshooting
+
+Check out the page on [debugging the CI server](https://github.com/rosenbrockc/ci/wiki/Debugging-the-CI-Server) for some command tips. If you can't solve your problem, please post an issue.
