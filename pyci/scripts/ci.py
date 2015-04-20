@@ -187,7 +187,9 @@ def _check_global_settings():
 def _setup_crontab():
     """Sets up the crontab if it hasn't already been setup."""
     from crontab import CronTab
-    command = "workon {}; {}".format(settings.venv, os.path.realpath(__file__) + " -cron")
+    #Since CI works out of a virtualenv anyway, the `ci.py` script will be
+    #installed in the bin already, so we can call it explicitly.
+    command = "source ~/.cron_profile; workon {}; ci.py -cron".format(settings.venv)
     user = _get_real_user()
     if args["nolive"]:
         vms("Skipping cron tab configuration because 'nolive' enabled.")
@@ -219,6 +221,21 @@ def _setup_crontab():
         db["cron"] = True
         _save_db()
 
+def _cron_profile():
+    """Sets up the .cron_profile file if it does not already exist.
+    """
+    #The main ingredients of the file are the import of the virtualenvwrapper
+    #and the setting of the PYCI_XML variable for global configuration.
+    from os import path
+    cronpath = path.expanduser("~/.cron_profile")
+    if not path.isfile(cronpath):
+        from os import getenv
+        xmlpath = getenv("PYCI_XML")    
+        contents = ['source /usr/local/bin/virtualenvwrapper.sh',
+                    'export PYCI_XML="{}"'.format(xmlpath)]
+        with open(cronpath, 'w') as f:
+            f.write('\n'.join(contents))
+
 def _setup_server():
     """Checks whether the server needs to be setup if a repo is being installed.
     If it does, checks whether anything needs to be done.
@@ -230,6 +247,7 @@ def _setup_server():
         if not _check_global_settings() or not _check_virtualenv():
             return False
 
+        _cron_profile()
         if "cron" in db and not db["cron"]:
             _setup_crontab()
 
@@ -406,7 +424,7 @@ def _list_repos():
             output.append(fullfmt.format(reponame, start, end, repo.filepath))
 
     info('\n'.join(output))
-
+    
 def _handle_install():
     """Handles the (un)installation of repositories on this CI server.
     """
@@ -421,7 +439,7 @@ def _handle_install():
         for xpath in args["uninstall"]:
             server.uninstall(xpath)
             okay("Uninstalled {} from the CI server.".format(xpath))
-    
+            
 def run():
     """Main script entry to handle the arguments given to the script."""
     _parser_options()

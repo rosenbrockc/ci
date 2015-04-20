@@ -16,8 +16,8 @@ except ImportError:
     print("warning: pypandoc module not found, could not convert Markdown to RST")
     read_md = lambda f: open(f, 'r').read()
 
-setup(name='py-ci',
-      version='0.0.2',
+setup(name='pyci',
+      version='0.0.3',
       description='Continuous integration server for Github and MediaWiki.',
       long_description=read_md('README.md'),
       author='Conrad W Rosenbrock',
@@ -31,9 +31,9 @@ setup(name='py-ci',
           "mwclient",
           "python-crontab"
       ],
-      packages=['py-ci'],
-      scripts=['py-ci/scripts/ci.py'],
-      package_data={'py-ci': ['templates/start.txt', 'templates/start.html',
+      packages=['pyci'],
+      scripts=['pyci/scripts/ci.py'],
+      package_data={'pyci': ['templates/start.txt', 'templates/start.html',
                               'templates/error.txt', 'templates/error.html',
                               'templates/failure.txt', 'templates/failure.html',
                               'templates/timeout.txt', 'templates/timeout.html',
