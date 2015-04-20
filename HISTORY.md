@@ -2,6 +2,11 @@
 
 For all revisions after the initial repository setup.
 
+## Revision 0.0.5
+
+- Debugging live interface to github.
+- Switching to `dev` branch and pull requests for mergers from now on.
+
 ## Revision 0.0.4
 
 - Debugging the actual implementation on the server to work well with crontab etc.

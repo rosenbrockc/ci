@@ -87,10 +87,12 @@ class RepositorySettings(object):
         """Creates an instance of github.Github to interact with the repos via the 
         API interface in pygithub.
         """
-        from pygithub import Github
-        vms("Querying github with user '{}'.".format(self.user))
-        g = Github(self.user, self.apikey)
+        from github import Github
+        vms("Querying github with user '{}'.".format(self.username))
+        g = Github(self.username, self.apikey)
         self._user = g.get_user()
+        if self._user is None:
+            raise ValueError("Can't authenticate to github with '{}'.".format(self.username))
         #The github user authenticating always has to be specified; however the user
         #may not be able to see the repo, even if it has access to it. We may need
         #to check the organization repos.
