@@ -10,7 +10,7 @@ __repodesc__
 Error Message and Stack Trace
 -----------------------------
 
-__message__
+__text_message__
 
 Unit tests are configured to run in "__repodir__".
 

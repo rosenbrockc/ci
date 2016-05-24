@@ -102,7 +102,12 @@ def _parser_options():
                         help=("For unit testing, when specified no live requests are made to "
                               "servers and all the class actions are performed in test mode. "
                               "This also prevents the cron tab from being installed."))
-
+    parser.add_argument("-force", nargs="*", default=["*"],
+                        help=("When cron runs manually it skips any repos that haven't had "
+                              "enough time elapse. This option forces the repos matching the "
+                              "specified pattern to be run, no matter how recently they "
+                              "have been run or their interval setting. Default '*'."))
+    
     global args
     args = vars(parser.parse_known_args()[0])
 
@@ -301,6 +306,12 @@ def _find_next(server):
     
     if "status" in db:
         for reponame, status in db["status"].items():
+            if args["force"] and (args["force"] == ["*"] or
+                                  any(reponame in f for f in args["force"])):
+                vms("'{}' matches the force condition; executing.".format(reponame))
+                result = reponame
+                break
+            
             vms("Checking cron status for {}: {}".format(reponame, status))
             start = None if "started" not in status else status["started"]
             end = None if "end" not in status else status["end"]
@@ -311,7 +322,7 @@ def _find_next(server):
                 #Check the last time it was run and see if enough time has
                 #elapsed.
                 elapsed = (datetime.now() - end).seconds/60
-                add = elapsed > server.cron.settings[reponame].frequency
+                add = elapsed >= server.cron.settings[reponame].frequency
                 if not add:
                     vms("'{}' skipped because the interval hasn't ".format(reponame) +
                         "elapsed ({} vs. {})".format(elapsed, server.cron.settings[reponame].frequency))
@@ -345,7 +356,8 @@ def _do_cron():
         return
     
     if ("enabled" in db and not db["enabled"]) or "enabled" not in db:
-        warn("The CI server is disabled. Exiting.")
+        if args["verbose"]:
+            warn("The CI server is disabled. Exiting.")
         exit(0)
     #Our basic idea with the cron is as follows:
     # - the cron runs every minute of the day.

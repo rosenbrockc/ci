@@ -2,6 +2,12 @@
 
 For all revisions after the initial repository setup.
 
+## Revision 0.0.6
+
+- Fixed a bug with `snumber` being added as an attribute of `FakePull` even though the real `PullRequest` doesn't have such an attribute.
+- Added `-force` option to `ci.py` to force a cron execution if the frequency hasn't elapsed.
+- 
+
 ## Revision 0.0.5
 
 - Debugging live interface to github.

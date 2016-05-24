@@ -1,5 +1,5 @@
 from config import RepositorySettings, GlobalSettings
-from pyci.msg import warn, err
+from pyci.msg import warn, err, vms
 
 class Server(object):
     """Represents the continuous integration server for automatically unit testing
@@ -76,7 +76,8 @@ class Server(object):
         """
         result = pull.fields_general(event)            
         if message is not None:
-            result["__message__"] = message
+            result["__text_message__"] = message
+            result["__html_message__"] = message.replace("\n", "<br />")
             
         return result
     
@@ -93,11 +94,11 @@ class Server(object):
             for pull in pulls[reponame]:
                 try:
                     archive = self.archive[pull.repokey]
-                    if pull.snumber in archive:
+                    if str(pull.number) in archive:
                         #We pass the archive in so that an existing staging directory (if
                         #different from the configured one) can be cleaned up if the previous
                         #attempt failed and left the file system dirty.
-                        pull.init(archive[pull.snumber])
+                        pull.init(archive[str(pull.number)])
                     else:
                         pull.init({})
                         
@@ -109,7 +110,7 @@ class Server(object):
                             start = datetime(2015, 4, 23, 13, 8)
                     else:
                         start = datetime.now()
-                    archive[pull.snumber] = {"success": False, "start": start,
+                    archive[str(pull.number)] = {"success": False, "start": start,
                                              "number": pull.number, "stage": pull.repodir,
                                              "completed": False, "finished": None}
                     #Once a local staging directory has been initialized, we add the sha
@@ -123,13 +124,13 @@ class Server(object):
 
                     pull.begin()
                     self.cron.email(pull.repo.name, "start", self._get_fields("start", pull), self.testmode)
-                    pull.test(expected[pull.number])
+                    pull.test(None if expected is None else expected[pull.number])
                     pull.finalize()
 
                     #Update the status of this pull request on the archive, save the archive
                     #file in case the next pull request throws an unhandled exception.
-                    archive[pull.snumber]["completed"] = True
-                    archive[pull.snumber]["success"] = abs(pull.percent - 1) < 1e-12
+                    archive[str(pull.number)]["completed"] = True
+                    archive[str(pull.number)]["success"] = abs(pull.percent - 1) < 1e-12
 
                     #This if block looks like a mess; it is necessary so that we can easily
                     #unit test this processing code by passing in the model outputs etc. that should
@@ -137,17 +138,17 @@ class Server(object):
                     if (self.testmode and testarchive is not None and
                         pull.number in testarchive[pull.repokey] and
                         testarchive[pull.repokey][pull.number]["finished"] is not None):
-                        archive[pull.snumber]["finished"] = testarchive[pull.repokey][pull.number]["finished"]
+                        archive[str(pull.number)]["finished"] = testarchive[pull.repokey][pull.number]["finished"]
                     elif self.testmode:
-                        archive[pull.snumber]["finished"] = datetime(2015, 4, 23, 13, 9)
+                        archive[str(pull.number)]["finished"] = datetime(2015, 4, 23, 13, 9)
                     else:
                         #This single line could replace the whole if block if we didn't have
                         #unit tests integrated with the main code.
-                        archive[pull.snumber]["finished"] = datetime.now()
+                        archive[str(pull.number)]["finished"] = datetime.now()
                     self._save_archive()
 
                     #We email after saving the archive in case the email server causes exceptions.
-                    if archive[pull.snumber]["success"]:
+                    if archive[str(pull.number)]["success"]:
                         key = "success"
                     else:
                         key = "failure"
@@ -183,11 +184,11 @@ class Server(object):
             result[lname] = []
             for pull in pulls:
                 newpull = True
-                if pull.snumber in self.archive[lname]:
+                if str(pull.number) in self.archive[lname]:
                     #Check the status of that pull request processing. If it was
                     #successful, we just ignore this open pull request; it is
                     #obviously waiting to be merged in.
-                    if self.archive[lname][pull.snumber]["completed"] == True:
+                    if self.archive[lname][str(pull.number)]["completed"] == True:
                         newpull = False
 
                 if newpull:
@@ -309,7 +310,13 @@ class PullRequest(object):
             representative commit for the PR.
         """
         else:
-            self.commit = pull.get_commits()[-1]
+            self.commit = None
+            if pull.commits > 0:
+                #By design, the first commit in the list is the latest one.
+                self.commit = pull.get_commits()[0]
+            else:
+                self.commit = None
+                vms("No commits found for pull request {} (fishy).".format(self.pull.url))
             
         self.url = None
         """The URL to the wiki page with details about the unit tests."""
@@ -365,7 +372,8 @@ class PullRequest(object):
         #Copy across all the static files so that we don't have to download them
         #again and chew up the bandwidth. We don't have to copy files that already
         #exist in the local repo.
-        self.repo.static.copy(self.repodir)
+        if self.repo.static is not None:
+            self.repo.static.copy(self.repodir)
         cwd = getcwd()
         chdir(self.repodir)
         
@@ -377,12 +385,13 @@ class PullRequest(object):
             if not self.testmode:
                 system("git remote add origin {}.git".format(self.repo.repo.html_url))
 
-            for file in self.repo.static.files:
-                #Here the 2:: removes the ./ specifying the path relative to the git
-                #repository root. It is added by convention in the config files.
-                system("git add {}".format(file["target"][2::]))
-            for folder in self.repo.static.folders:
-                system("git add {}".format(file["target"][2::]))
+            if self.repo.static is not None:
+                for file in self.repo.static.files:
+                    #Here the 2:: removes the ./ specifying the path relative to the git
+                    #repository root. It is added by convention in the config files.
+                    system("git add {}".format(file["target"][2::]))
+                for folder in self.repo.static.folders:
+                    system("git add {}".format(file["target"][2::]))
 
             #Now sync with the master branch so that we get everything else that isn't
             #static. Also, fetch the changes from the pull request head so that we
@@ -394,7 +403,7 @@ class PullRequest(object):
         #pull request we are wanting to merge in.
         if not self.testmode:
             system("git fetch origin pull/{0}/head:testing_{0}".format(self.pull.number))
-            system("git checkout testing_{}".format(pull.number))
+            system("git checkout testing_{}".format(self.pull.number))
 
         #The local repo now has the pull request's proposed changes and is ready
         #to be unit tested.
@@ -433,9 +442,15 @@ class PullRequest(object):
         the setup of the unit tests being run. Does *not* run the actual unit
         tests yet.
         """
-        self.url = self.server.wiki.create(self)
+        self.server.wiki.create(self)
+        self.url = "http://{}/{}".format(self.server.wiki.url, self.server.wiki.basepage)
         if not self.testmode:
-            self.commit.create_status("pending", self.url, "Running unit tests...")
+            #We don't want to create another status message if one already exists!
+            for stat in self.commit.get_statuses():
+                if stat.state == "pending":
+                    break
+            else:
+                self.commit.create_status("pending", self.url, "Running unit tests...")
 
     def test(self, testresults=None):
         """Runs the unit test commands specified in the repo settings in parallel,
@@ -483,6 +498,22 @@ class PullRequest(object):
             test["code"] = result["code"]
             test["result"] = result["output"]      
 
+    def _status_exists(self, state, description=None):
+        """Checks whether the currently active commit has a status of the 
+        type already specified.
+
+        :arg state: one of ["pending", "success", "failure"].
+        :arg description: the text message (if any) that should exist in the
+          description for it to match.
+        """
+        result = False
+        for stat in self.commit.get_statuses():
+            if stat.state == state and (description is None or description in stat.description):
+                result = True
+                break
+
+        return result
+            
     def finalize(self):
         """Finalizes the pull request processing by updating the wiki page with
         details, posting success/failure to the github pull request's commit.
@@ -498,12 +529,15 @@ class PullRequest(object):
         self.percent = stotal/float(len(self.repo.testing.tests))
         self.message = "Results: {0:.2%} in {1:d}s.".format(self.percent, ttotal)
         if not self.testmode:
-            if percent < 1:
-                self.commit.create_status("failure", self.url, self.message)
+            if self.percent < 1:
+                if not self._status_exists("failure"):
+                    self.commit.create_status("failure", self.url, self.message)
             elif any([test["code"] == 1 for test in self.repo.testing.tests]):
-                self.commit.create_status("pending", self.url, self.message + " Slowdown reported.")
+                if not self._status_exists("pending", "Slowdown"):
+                    self.commit.create_status("pending", self.url, self.message + " Slowdown reported.")
             else:
-                self.commit.create_status("success", self.url, self.message)
+                if not self._status_exists("success"):
+                    self.commit.create_status("success", self.url, self.message)
         self.server.wiki.update(self)
 
     def _fields_common(self):
@@ -517,7 +551,7 @@ class PullRequest(object):
             result["__repourl__"] = self.repo.repo.html_url
             result["__repodir__"] = self.repodir
 
-            if self.organization is not None:
+            if self.repo.organization is not None:
                 owner = self.repo.organization
             else:
                 owner = self.repo.user
@@ -526,6 +560,7 @@ class PullRequest(object):
             result["__userurl__"] = owner.html_url
             result["__useravatar__"] = owner.avatar_url
             result["__useremail__"] = owner.email
+        result["__pullnum__"] = self.number
 
         return result
 
@@ -602,6 +637,9 @@ class Wiki(object):
         self.prefix = None
         """The text prefix used in front of the pages and links created for this request.
         """
+        import re
+        self.rxplace = re.compile("<!--@CI:Placeholder-->(?P<contents>.*?)<!--@CI:Endholder-->",
+                                  re.DOTALL, re.I)
         self._get_site()
 
     def _get_site(self):
@@ -670,7 +708,8 @@ class Wiki(object):
                 #it is accessing is its own; the copy, at worst, would be through the named
                 #pipes over TCP. It is wasteful compared to a HDD copy, but simplifies the
                 #uploading (which must also make an entry in the wiki database).
-                if not self.testmode:
+                from os import stat
+                if not self.testmode and stat(test["result"]).st_size != 0:
                     self.site.upload(open(test["result"]), test["remote_file"],
                                      '`stdout` from `{}`'.format(test["command"]))
 
@@ -708,18 +747,34 @@ class Wiki(object):
         """
         self.prefix = "{}_Pull_Request_{}".format(request.repo.name, request.pull.number)
         if not self.testmode:
-            page = site.pages[self.basepage]
+            page = self.site.pages[self.basepage]
             text = page.text()
         else:
-            text = "This is a fake wiki page.\n\n<!--@CI:Placeholder-->"
+            text = "This is a fake wiki page.\n\n<!--@CI:Placeholder--><!--@CI:Endholder-->"
             
         self.newpage = self.prefix
+        # If tests keep failing, we don't want to keep adding links to the main page.
+        cmatch = self.rxplace.match(text)
+        if not cmatch:
+            err("Wiki pages must have the placeholders <!--@CI:Placeholder--><!--@CI:Endholder-->.")
+            return False
+        
+        contents = cmatch.group("contents")
+        #Search the contents for this link.
         link = "Pull Request #{}".format(request.pull.number)
-        text = text.replace("<!--@CI:Placeholder-->",
-                            "* [[{}|{}]]\n<!--@CI:Placeholder-->".format(self.newpage, link))
+        linsert = "* [[{}|{}]]".format(self.newpage, link)
+        if linsert not in contents:
+            text = text.replace("<!--@CI:Endholder-->", "{}\n<!--@CI:Endholder-->".format(linsert))
+            save = True
+        else:
+            save = False
+            
         if not self.testmode:
-            result = page.save(text, summary="Added {} unit test link.".format(link), minor=True, bot=True)
-            return result[u'result'] == u'Success'
+            if save:
+                result = page.save(text, summary="Added {} unit test link.".format(link), minor=True, bot=True)
+                return result[u'result'] == u'Success'
+            else:
+                return True
         else:
             return text
 
@@ -753,7 +808,8 @@ class CronManager(object):
                 #The templates are very small, so we don't need to worry about the file size.
                 contents = f.read()
             for field, value in fields.items():
-                contents = contents.replace(field, value)
+                if value is not None:
+                    contents = contents.replace(field, str(value))
         else:
             raise ValueError("The event '{}' is not supported or ".format(event) +
                              "the template file ({}) is missing.".format(template))
