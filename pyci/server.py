@@ -764,7 +764,7 @@ class Wiki(object):
         link = "Pull Request #{}".format(request.pull.number)
         linsert = "* [[{}|{}]]".format(self.newpage, link)
         if linsert not in contents:
-            text = text.replace("<!--@CI:Endholder-->", "{}\n<!--@CI:Endholder-->".format(linsert))
+            text = text.replace("<!--@CI:Placeholder-->", "<!--@CI:Placeholder-->{}\n".format(linsert))
             save = True
         else:
             save = False
